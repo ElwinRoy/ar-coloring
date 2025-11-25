@@ -99,6 +99,33 @@
     <div id="status-bar">📷 Point camera at the image</div>
 
     <script>
+        // Register custom component to control visibility
+        AFRAME.registerComponent('hide-on-lost', {
+            init: function() {
+                const el = this.el;
+                const plane = el.querySelector('a-plane');
+                
+                // Hide plane initially
+                if (plane) {
+                    plane.object3D.visible = false;
+                }
+                
+                // Show on target found
+                el.addEventListener('targetFound', function() {
+                    if (plane) {
+                        plane.object3D.visible = true;
+                    }
+                });
+                
+                // Hide on target lost
+                el.addEventListener('targetLost', function() {
+                    if (plane) {
+                        plane.object3D.visible = false;
+                    }
+                });
+            }
+        });
+
         const CONFIG = {
             TARGET_IMAGE: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind',
             COLORED_IMAGE: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png'
@@ -107,8 +134,6 @@
         const startScreen = document.getElementById('start-screen');
         const startBtn = document.getElementById('start-btn');
         const statusBar = document.getElementById('status-bar');
-        
-        let colorPlane = null;
         
         // START BUTTON
         startBtn.addEventListener('click', async () => {
@@ -137,8 +162,8 @@
                 maxTrack: 1,
                 filterMinCF: 0.0001,
                 filterBeta: 0.001,
-                missTolerance: 500,
-                warmupTolerance: 5,
+                missTolerance: 0,
+                warmupTolerance: 0,
                 uiLoading: 'no',
                 uiScanning: 'no',
                 uiError: 'no'
@@ -166,12 +191,13 @@
             camera.setAttribute('look-controls', 'enabled: false');
             scene.appendChild(camera);
             
-            // Target entity
+            // Target entity with custom component
             const targetEntity = document.createElement('a-entity');
             targetEntity.setAttribute('mindar-image-target', 'targetIndex: 0');
+            targetEntity.setAttribute('hide-on-lost', '');
             targetEntity.id = 'target';
             
-            // Colored plane - HIDDEN BY DEFAULT
+            // Colored plane
             const plane = document.createElement('a-plane');
             plane.id = 'color-plane';
             plane.setAttribute('src', '#colored-img');
@@ -184,13 +210,10 @@
                 transparent: true,
                 opacity: 1
             });
-            plane.setAttribute('visible', 'false');  // HIDDEN BY DEFAULT
             
             targetEntity.appendChild(plane);
             scene.appendChild(targetEntity);
             document.body.appendChild(scene);
-            
-            colorPlane = plane;
             
             // Set aspect ratio
             coloredImg.onload = function() {
@@ -202,18 +225,15 @@
             scene.addEventListener('loaded', () => {
                 startScreen.classList.add('hidden');
                 
-                // TARGET FOUND - SHOW colored image
+                // Status updates
                 targetEntity.addEventListener('targetFound', () => {
                     console.log('🎯 TARGET FOUND!');
-                    colorPlane.setAttribute('visible', 'true');  // SHOW
                     statusBar.textContent = '✨ Colors Applied!';
                     statusBar.classList.add('detected');
                 });
                 
-                // TARGET LOST - HIDE colored image
                 targetEntity.addEventListener('targetLost', () => {
                     console.log('❌ Target lost');
-                    colorPlane.setAttribute('visible', 'false');  // HIDE
                     statusBar.textContent = '📷 Point camera at the image';
                     statusBar.classList.remove('detected');
                 });
