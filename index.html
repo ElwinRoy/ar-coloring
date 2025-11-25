@@ -7,8 +7,9 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>AR Coloring Book</title>
     
-    <!-- MindAR and A-Frame -->
+    <!-- A-Frame MUST load first -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- MindAR loads after A-Frame -->
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
@@ -18,17 +19,18 @@
             box-sizing: border-box;
         }
         
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            position: fixed;
+        html, body {
             width: 100%;
             height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
-        #loading-screen {
+        /* Start Screen */
+        #start-screen {
             position: fixed;
             top: 0;
             left: 0;
@@ -39,145 +41,132 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
+            z-index: 9999;
             color: white;
+            text-align: center;
+            padding: 20px;
         }
         
-        #loading-screen.hidden {
-            display: none;
+        #start-screen.hidden {
+            display: none !important;
         }
         
-        .loader {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-left-color: #00d4ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        #start-screen h1 {
+            font-size: 28px;
+            margin-bottom: 15px;
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        #start-screen p {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 30px;
+            line-height: 1.6;
         }
         
-        .loading-text {
-            margin-top: 20px;
-            font-size: 16px;
-            color: rgba(255,255,255,0.8);
-        }
-        
-        .loading-subtext {
-            margin-top: 8px;
-            font-size: 12px;
-            color: rgba(255,255,255,0.5);
-        }
-        
-        #start-button {
-            display: none;
-            padding: 18px 50px;
-            font-size: 18px;
+        #start-btn {
+            padding: 20px 60px;
+            font-size: 20px;
             font-weight: 600;
             background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
             color: white;
             border: none;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #start-btn:active {
+            transform: scale(0.95);
+            opacity: 0.9;
+        }
+        
+        /* Loading indicator */
+        #loading-indicator {
+            display: none;
             margin-top: 20px;
         }
         
-        #start-button:active {
-            transform: scale(0.95);
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
         }
         
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Instructions */
         #instructions {
             position: fixed;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
-            padding: 16px 28px;
-            border-radius: 30px;
+            padding: 15px 25px;
+            border-radius: 25px;
             font-size: 14px;
-            z-index: 100;
+            z-index: 1000;
             text-align: center;
-            max-width: 90%;
-            border: 1px solid rgba(255,255,255,0.1);
+            display: none;
         }
         
+        #instructions.visible {
+            display: block;
+        }
+        
+        /* Status */
         #status {
             position: fixed;
-            top: 50px;
+            top: 60px;
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+            background: #00c853;
             color: white;
             padding: 12px 24px;
             border-radius: 25px;
             font-size: 14px;
             font-weight: 600;
-            z-index: 100;
+            z-index: 1000;
             display: none;
-            box-shadow: 0 4px 15px rgba(0, 200, 83, 0.4);
         }
         
         #status.visible {
             display: block;
         }
         
-        #error-screen {
-            position: fixed;
+        /* A-Frame scene container */
+        .a-scene {
+            position: fixed !important;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            color: white;
-            padding: 30px;
-            text-align: center;
+            width: 100% !important;
+            height: 100% !important;
         }
         
-        .error-icon {
-            font-size: 60px;
-            margin-bottom: 20px;
-        }
-        
-        .error-title {
-            font-size: 22px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        
-        .error-message {
-            font-size: 14px;
-            color: rgba(255,255,255,0.7);
-            line-height: 1.6;
+        /* Hide A-Frame default UI */
+        .a-enter-vr-button, 
+        .a-enter-ar-button,
+        .a-loader-title {
+            display: none !important;
         }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loading-screen">
-        <div class="loader"></div>
-        <p class="loading-text">Initializing AR Camera...</p>
-        <p class="loading-subtext">Please allow camera access when prompted</p>
-        <button id="start-button">📷 Start AR Camera</button>
-    </div>
-    
-    <!-- Error Screen -->
-    <div id="error-screen">
-        <div class="error-icon">📵</div>
-        <div class="error-title">Camera Access Required</div>
-        <div class="error-message">
-            Please allow camera access to use the AR coloring feature.
+    <!-- Start Screen - User MUST tap to start (required for camera on mobile) -->
+    <div id="start-screen">
+        <h1>🎨 AR Coloring Book</h1>
+        <p>Point your camera at the black & white image<br>to see it magically colored!</p>
+        <button id="start-btn">📷 Start Camera</button>
+        <div id="loading-indicator">
+            <div class="spinner"></div>
+            <p style="color: white; font-size: 14px;">Starting camera...</p>
         </div>
     </div>
     
@@ -185,305 +174,178 @@
     <div id="status">✨ Colors Revealed!</div>
     
     <!-- Instructions -->
-    <div id="instructions">
-        📷 Point camera at the black & white image
-    </div>
+    <div id="instructions">📷 Point at the black & white image</div>
     
-    <!-- A-Frame AR Scene with IMPROVED STABILIZATION -->
+    <!-- A-Frame Scene - Initially without mindar-image to prevent auto-start -->
     <a-scene
         id="ar-scene"
-        mindar-image="imageTargetSrc: https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind; 
-                      autoStart: false; 
-                      uiLoading: no; 
-                      uiScanning: no; 
-                      uiError: no;
-                      filterMinCF: 0.1;
-                      filterBeta: 1000;
-                      missTolerance: 10;
-                      warmupTolerance: 10;"
-        color-space="sRGB"
-        renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true; precision: high;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
+        renderer="colorManagement: true; antialias: true; alpha: true;"
         embedded
+        style="display: none;"
     >
-        <!-- Assets -->
         <a-assets timeout="30000">
             <img id="colored-image" src="https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png" crossorigin="anonymous">
         </a-assets>
         
-        <!-- Camera -->
-        <a-camera position="0 0 0" look-controls="enabled: false" cursor="enabled: false;"></a-camera>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         
-        <!-- Image Target with Stabilization -->
         <a-entity id="image-target" mindar-image-target="targetIndex: 0">
-            <!-- Stabilized container for the overlay -->
-            <a-entity id="stabilized-container" smooth-motion="smoothingFactor: 0.15; rotationSmoothing: 0.1;">
-                <!-- Colored overlay - PERFECTLY ALIGNED -->
-                <a-plane
-                    id="colored-overlay"
-                    src="#colored-image"
-                    position="0 0 0.001"
-                    width="1"
-                    height="1"
-                    material="shader: flat; 
-                             transparent: true; 
-                             opacity: 0; 
-                             side: double;
-                             alphaTest: 0.5;
-                             depthTest: true;
-                             depthWrite: false;"
-                    auto-scale
-                ></a-plane>
-            </a-entity>
+            <a-plane
+                id="colored-overlay"
+                src="#colored-image"
+                position="0 0 0"
+                width="1"
+                height="1"
+                material="shader: flat; transparent: true; opacity: 0; side: double;"
+            ></a-plane>
         </a-entity>
     </a-scene>
 
     <script>
-        // ============================================
-        // SMOOTH MOTION COMPONENT - Reduces Jitter
-        // ============================================
-        AFRAME.registerComponent('smooth-motion', {
-            schema: {
-                smoothingFactor: { type: 'number', default: 0.15 },
-                rotationSmoothing: { type: 'number', default: 0.1 }
-            },
-            
-            init: function() {
-                this.targetPosition = new THREE.Vector3();
-                this.targetQuaternion = new THREE.Quaternion();
-                this.currentPosition = new THREE.Vector3();
-                this.currentQuaternion = new THREE.Quaternion();
-                this.initialized = false;
-                
-                // Store parent reference
-                this.parentEl = this.el.parentEl;
-            },
-            
-            tick: function() {
-                if (!this.parentEl) return;
-                
-                const parent = this.parentEl.object3D;
-                const obj = this.el.object3D;
-                
-                // Get parent's world position and rotation
-                parent.getWorldPosition(this.targetPosition);
-                parent.getWorldQuaternion(this.targetQuaternion);
-                
-                if (!this.initialized) {
-                    this.currentPosition.copy(this.targetPosition);
-                    this.currentQuaternion.copy(this.targetQuaternion);
-                    this.initialized = true;
-                }
-                
-                // Smooth interpolation for position
-                this.currentPosition.lerp(this.targetPosition, this.data.smoothingFactor);
-                
-                // Smooth interpolation for rotation
-                this.currentQuaternion.slerp(this.targetQuaternion, this.data.rotationSmoothing);
-                
-                // Apply smoothed transform
-                obj.position.copy(this.currentPosition);
-                obj.quaternion.copy(this.currentQuaternion);
-            }
-        });
-        
-        // ============================================
-        // AUTO-SCALE COMPONENT - Perfect Alignment
-        // ============================================
-        AFRAME.registerComponent('auto-scale', {
-            init: function() {
-                const img = document.querySelector('#colored-image');
-                const el = this.el;
-                
-                const setScale = () => {
-                    if (img.naturalWidth && img.naturalHeight) {
-                        const aspectRatio = img.naturalHeight / img.naturalWidth;
-                        el.setAttribute('height', aspectRatio);
-                        console.log('Image aspect ratio set:', aspectRatio);
-                    }
-                };
-                
-                if (img.complete) {
-                    setScale();
-                } else {
-                    img.addEventListener('load', setScale);
-                }
-            }
-        });
-        
-        // ============================================
-        // ADVANCED STABILIZER - Extra Smoothing
-        // ============================================
-        class PositionStabilizer {
-            constructor(bufferSize = 5) {
-                this.bufferSize = bufferSize;
-                this.positionBuffer = [];
-                this.rotationBuffer = [];
-            }
-            
-            addSample(position, rotation) {
-                this.positionBuffer.push(position.clone());
-                this.rotationBuffer.push(rotation.clone());
-                
-                if (this.positionBuffer.length > this.bufferSize) {
-                    this.positionBuffer.shift();
-                    this.rotationBuffer.shift();
-                }
-            }
-            
-            getStabilizedPosition() {
-                if (this.positionBuffer.length === 0) return null;
-                
-                const avg = new THREE.Vector3();
-                this.positionBuffer.forEach(p => avg.add(p));
-                avg.divideScalar(this.positionBuffer.length);
-                return avg;
-            }
-            
-            getStabilizedRotation() {
-                if (this.rotationBuffer.length === 0) return null;
-                
-                // Use the most recent rotation with slight averaging
-                return this.rotationBuffer[this.rotationBuffer.length - 1];
-            }
-        }
-        
-        // ============================================
-        // MAIN APPLICATION
-        // ============================================
-        const loadingScreen = document.getElementById('loading-screen');
-        const errorScreen = document.getElementById('error-screen');
-        const startButton = document.getElementById('start-button');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const loadingIndicator = document.getElementById('loading-indicator');
         const instructions = document.getElementById('instructions');
         const status = document.getElementById('status');
         const sceneEl = document.getElementById('ar-scene');
-        const imageTarget = document.getElementById('image-target');
         const coloredOverlay = document.getElementById('colored-overlay');
+        const imageTarget = document.getElementById('image-target');
         
-        let arSystem = null;
-        let isTracking = false;
-        let stabilizer = new PositionStabilizer(8);
+        let arStarted = false;
         
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showError('Camera not supported on this device/browser');
-                return;
-            }
+        // Start button click - REQUIRED for mobile camera access
+        startBtn.addEventListener('click', async () => {
+            startBtn.style.display = 'none';
+            loadingIndicator.style.display = 'block';
             
-            if (isMobile) {
-                startButton.style.display = 'block';
-                document.querySelector('.loader').style.display = 'none';
-                document.querySelector('.loading-text').textContent = 'Ready to Start';
-                document.querySelector('.loading-subtext').textContent = 'Tap the button to enable AR camera';
-            } else {
-                initAR();
-            }
-        });
-        
-        startButton.addEventListener('click', () => {
-            startButton.disabled = true;
-            startButton.textContent = 'Starting...';
-            initAR();
-        });
-        
-        async function initAR() {
             try {
-                await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
+                // First request camera permission explicitly
+                console.log('Requesting camera permission...');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
                         facingMode: 'environment',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    } 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
                 });
                 
-                arSystem = sceneEl.systems['mindar-image-system'];
+                // Stop this stream - MindAR will create its own
+                stream.getTracks().forEach(track => track.stop());
+                console.log('Camera permission granted!');
                 
-                if (sceneEl.hasLoaded) {
-                    startARSession();
-                } else {
-                    sceneEl.addEventListener('loaded', startARSession);
-                }
+                // Now initialize MindAR
+                initMindAR();
                 
             } catch (error) {
                 console.error('Camera error:', error);
-                showError('Camera permission denied. Please allow camera access and refresh.');
+                loadingIndicator.innerHTML = `
+                    <p style="color: #ff4444; font-size: 16px;">❌ Camera Error</p>
+                    <p style="color: white; font-size: 12px; margin-top: 10px;">
+                        ${error.message || 'Could not access camera'}<br><br>
+                        Please check:<br>
+                        • Camera permissions are allowed<br>
+                        • No other app is using camera<br>
+                        • Using HTTPS connection
+                    </p>
+                `;
             }
-        }
-        
-        async function startARSession() {
-            try {
-                await arSystem.start();
-                loadingScreen.classList.add('hidden');
-                console.log('AR Started successfully!');
-            } catch (error) {
-                console.error('AR Start error:', error);
-                showError('Failed to start AR. Please refresh and try again.');
-            }
-        }
-        
-        function showError(message) {
-            loadingScreen.classList.add('hidden');
-            errorScreen.style.display = 'flex';
-            errorScreen.querySelector('.error-message').textContent = message;
-        }
-        
-        // Target found - with smooth fade in
-        imageTarget.addEventListener('targetFound', () => {
-            console.log('🎯 Target Found!');
-            isTracking = true;
-            
-            status.classList.add('visible');
-            instructions.innerHTML = '✨ Magic coloring applied!';
-            
-            // Smooth fade in
-            smoothFade(coloredOverlay, 0, 1, 400);
         });
         
-        // Target lost - with smooth fade out
-        imageTarget.addEventListener('targetLost', () => {
-            console.log('❌ Target Lost');
-            isTracking = false;
+        function initMindAR() {
+            console.log('Initializing MindAR...');
             
-            status.classList.remove('visible');
-            instructions.innerHTML = '📷 Point camera at the black & white image';
+            // Add MindAR component to scene
+            sceneEl.setAttribute('mindar-image', {
+                imageTargetSrc: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind',
+                autoStart: true,
+                uiLoading: 'no',
+                uiScanning: 'no',
+                uiError: 'no',
+                filterMinCF: 0.1,
+                filterBeta: 10,
+                missTolerance: 5,
+                warmupTolerance: 5
+            });
             
-            // Smooth fade out
-            smoothFade(coloredOverlay, 1, 0, 200);
-        });
+            // Show the scene
+            sceneEl.style.display = 'block';
+            
+            // Listen for AR ready event
+            sceneEl.addEventListener('arReady', () => {
+                console.log('AR Ready!');
+                arStarted = true;
+                startScreen.classList.add('hidden');
+                instructions.classList.add('visible');
+            });
+            
+            // Listen for AR error
+            sceneEl.addEventListener('arError', (event) => {
+                console.error('AR Error:', event);
+                loadingIndicator.innerHTML = `
+                    <p style="color: #ff4444;">❌ AR Error</p>
+                    <p style="color: white; font-size: 12px; margin-top: 10px;">
+                        Failed to start AR.<br>Please refresh and try again.
+                    </p>
+                `;
+            });
+            
+            // Set up target tracking events
+            setupTargetEvents();
+        }
         
-        // Smooth opacity fade
-        function smoothFade(element, from, to, duration) {
+        function setupTargetEvents() {
+            // Wait a bit for the target entity to be ready
+            setTimeout(() => {
+                const target = document.querySelector('[mindar-image-target]');
+                
+                if (target) {
+                    target.addEventListener('targetFound', () => {
+                        console.log('🎯 Target Found!');
+                        status.classList.add('visible');
+                        instructions.classList.remove('visible');
+                        
+                        // Fade in overlay
+                        fadeOverlay(0, 1, 500);
+                    });
+                    
+                    target.addEventListener('targetLost', () => {
+                        console.log('❌ Target Lost');
+                        status.classList.remove('visible');
+                        instructions.classList.add('visible');
+                        
+                        // Fade out overlay
+                        fadeOverlay(1, 0, 300);
+                    });
+                }
+            }, 1000);
+        }
+        
+        function fadeOverlay(from, to, duration) {
             const start = performance.now();
             
-            function update(currentTime) {
-                const elapsed = currentTime - start;
+            function animate(time) {
+                const elapsed = time - start;
                 const progress = Math.min(elapsed / duration, 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                const opacity = from + (to - from) * eased;
+                const opacity = from + (to - from) * progress;
                 
-                element.setAttribute('material', 'opacity', opacity);
+                coloredOverlay.setAttribute('material', 'opacity', opacity);
                 
                 if (progress < 1) {
-                    requestAnimationFrame(update);
+                    requestAnimationFrame(animate);
                 }
             }
             
-            requestAnimationFrame(update);
+            requestAnimationFrame(animate);
         }
         
-        // Pause/resume handling
-        document.addEventListener('visibilitychange', () => {
-            if (arSystem) {
-                if (document.hidden) {
-                    arSystem.pause();
-                } else {
-                    arSystem.unpause();
-                }
-            }
+        // Auto-adjust overlay size based on image
+        const coloredImg = document.querySelector('#colored-image');
+        coloredImg.addEventListener('load', () => {
+            const aspectRatio = coloredImg.naturalHeight / coloredImg.naturalWidth;
+            coloredOverlay.setAttribute('height', aspectRatio);
+            console.log('Image loaded, aspect ratio:', aspectRatio);
         });
     </script>
 </body>
