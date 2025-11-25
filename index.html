@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>AR Coloring Book</title>
+    
+    <!-- MindAR and A-Frame -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: white;
+        }
+        
+        #loading-screen.hidden {
+            display: none;
+        }
+        
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-left-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            margin-top: 20px;
+            font-size: 16px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .loading-subtext {
+            margin-top: 8px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        /* Start Button */
+        #start-button {
+            display: none;
+            padding: 18px 50px;
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        #start-button:active {
+            transform: scale(0.95);
+        }
+        
+        /* Instructions Banner */
+        #instructions {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            padding: 16px 28px;
+            border-radius: 30px;
+            font-size: 14px;
+            z-index: 100;
+            text-align: center;
+            max-width: 90%;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* Status Badge */
+        #status {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0, 200, 83, 0.4);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.05); }
+        }
+        
+        #status.visible {
+            display: block;
+        }
+        
+        /* Error Screen */
+        #error-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .error-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        .error-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .error-message {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+        }
+        
+        /* Scanning Frame Overlay */
+        #scan-frame {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        #scan-frame::before,
+        #scan-frame::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-color: #00d4ff;
+            border-style: solid;
+        }
+        
+        #scan-frame::before {
+            top: -3px;
+            left: -3px;
+            border-width: 4px 0 0 4px;
+            border-radius: 20px 0 0 0;
+        }
+        
+        #scan-frame::after {
+            bottom: -3px;
+            right: -3px;
+            border-width: 0 4px 4px 0;
+            border-radius: 0 0 20px 0;
+        }
+        
+        #scan-frame.detected {
+            border-color: #00e676;
+        }
+        
+        #scan-frame.detected::before,
+        #scan-frame.detected::after {
+            border-color: #00e676;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p class="loading-text">Initializing AR Camera...</p>
+        <p class="loading-subtext">Please allow camera access when prompted</p>
+        <button id="start-button">📷 Start AR Camera</button>
+    </div>
+    
+    <!-- Error Screen -->
+    <div id="error-screen">
+        <div class="error-icon">📵</div>
+        <div class="error-title">Camera Access Required</div>
+        <div class="error-message">
+            Please allow camera access to use the AR coloring feature.<br><br>
+            On iOS: Settings → Safari → Camera → Allow<br>
+            On Android: Settings → Apps → Browser → Permissions → Camera
+        </div>
+    </div>
+    
+    <!-- Scanning Frame -->
+    <div id="scan-frame"></div>
+    
+    <!-- Status Badge -->
+    <div id="status">✨ Colors Revealed!</div>
+    
+    <!-- Instructions -->
+    <div id="instructions">
+        📷 Point camera at the black & white image
+    </div>
+    
+    <!-- A-Frame AR Scene -->
+    <a-scene
+        id="ar-scene"
+        mindar-image="imageTargetSrc: ./targets/targets.mind; 
+                      autoStart: false; 
+                      uiLoading: no; 
+                      uiScanning: no; 
+                      uiError: no;
+                      filterMinCF: 0.0001;
+                      filterBeta: 0.01;
+                      missTolerance: 5;
+                      warmupTolerance: 5;"
+        color-space="sRGB"
+        renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true;"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false"
+        embedded
+    >
+        <!-- Assets -->
+        <a-assets timeout="30000">
+            <!-- Replace this with your colored image URL or local path -->
+            <img id="colored-image" src="./images/colored.png" crossorigin="anonymous">
+        </a-assets>
+        
+        <!-- Camera -->
+        <a-camera position="0 0 0" look-controls="enabled: false" cursor="enabled: false;"></a-camera>
+        
+        <!-- Image Target - Tracks the colorless image -->
+        <a-entity id="image-target" mindar-image-target="targetIndex: 0">
+            <!-- Colored overlay that appears on top -->
+            <a-plane
+                id="colored-overlay"
+                src="#colored-image"
+                position="0 0 0"
+                width="1"
+                height="1"
+                material="shader: flat; 
+                         transparent: true; 
+                         opacity: 0; 
+                         side: double;
+                         alphaTest: 0.1;"
+            ></a-plane>
+        </a-entity>
+    </a-scene>
+
+    <script>
+        // Elements
+        const loadingScreen = document.getElementById('loading-screen');
+        const errorScreen = document.getElementById('error-screen');
+        const startButton = document.getElementById('start-button');
+        const instructions = document.getElementById('instructions');
+        const status = document.getElementById('status');
+        const scanFrame = document.getElementById('scan-frame');
+        const sceneEl = document.getElementById('ar-scene');
+        const imageTarget = document.getElementById('image-target');
+        const coloredOverlay = document.getElementById('colored-overlay');
+        
+        let arSystem = null;
+        
+        // Check if on mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check camera support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError('Camera not supported on this device/browser');
+                return;
+            }
+            
+            // On mobile, show start button (required for camera permission)
+            if (isMobile) {
+                startButton.style.display = 'block';
+                document.querySelector('.loader').style.display = 'none';
+                document.querySelector('.loading-text').textContent = 'Ready to Start';
+                document.querySelector('.loading-subtext').textContent = 'Tap the button to enable AR camera';
+            } else {
+                // On desktop, auto-start
+                initAR();
+            }
+        });
+        
+        // Start button click handler
+        startButton.addEventListener('click', () => {
+            startButton.disabled = true;
+            startButton.textContent = 'Starting...';
+            initAR();
+        });
+        
+        // Initialize AR
+        async function initAR() {
+            try {
+                // Request camera permission first
+                await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                // Start MindAR
+                arSystem = sceneEl.systems['mindar-image-system'];
+                
+                // Wait for scene to load
+                if (sceneEl.hasLoaded) {
+                    startARSession();
+                } else {
+                    sceneEl.addEventListener('loaded', startARSession);
+                }
+                
+            } catch (error) {
+                console.error('Camera error:', error);
+                if (error.name === 'NotAllowedError') {
+                    showError('Camera permission denied. Please allow camera access and refresh.');
+                } else {
+                    showError('Could not access camera: ' + error.message);
+                }
+            }
+        }
+        
+        // Start AR session
+        async function startARSession() {
+            try {
+                await arSystem.start();
+                loadingScreen.classList.add('hidden');
+                console.log('AR Started successfully!');
+            } catch (error) {
+                console.error('AR Start error:', error);
+                showError('Failed to start AR. Please refresh and try again.');
+            }
+        }
+        
+        // Show error screen
+        function showError(message) {
+            loadingScreen.classList.add('hidden');
+            errorScreen.style.display = 'flex';
+            errorScreen.querySelector('.error-message').textContent = message;
+        }
+        
+        // Target found event
+        imageTarget.addEventListener('targetFound', () => {
+            console.log('🎯 Target Found!');
+            
+            // Show status
+            status.classList.add('visible');
+            scanFrame.classList.add('detected');
+            instructions.innerHTML = '✨ Magic coloring applied!';
+            
+            // Animate overlay fade in
+            animateOpacity(coloredOverlay, 0, 1, 600);
+        });
+        
+        // Target lost event
+        imageTarget.addEventListener('targetLost', () => {
+            console.log('❌ Target Lost');
+            
+            // Hide status
+            status.classList.remove('visible');
+            scanFrame.classList.remove('detected');
+            instructions.innerHTML = '📷 Point camera at the black & white image';
+            
+            // Animate overlay fade out
+            animateOpacity(coloredOverlay, 1, 0, 300);
+        });
+        
+        // Smooth opacity animation
+        function animateOpacity(element, from, to, duration) {
+            const start = performance.now();
+            
+            function update(currentTime) {
+                const elapsed = currentTime - start;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Ease out cubic
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const currentOpacity = from + (to - from) * eased;
+                
+                element.setAttribute('material', 'opacity', currentOpacity);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            
+            requestAnimationFrame(update);
+        }
+        
+        // Handle visibility change (pause/resume when app goes background)
+        document.addEventListener('visibilitychange', () => {
+            if (arSystem) {
+                if (document.hidden) {
+                    arSystem.pause();
+                } else {
+                    arSystem.unpause();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
