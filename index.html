@@ -86,6 +86,7 @@
             cursor: pointer;
             box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
             transition: transform 0.3s, box-shadow 0.3s;
+            margin-top: 20px;
         }
         
         #start-button:active {
@@ -255,7 +256,7 @@
     <!-- A-Frame AR Scene -->
     <a-scene
         id="ar-scene"
-        mindar-image="imageTargetSrc: ./targets/targets.mind; 
+        mindar-image="imageTargetSrc: https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind; 
                       autoStart: false; 
                       uiLoading: no; 
                       uiScanning: no; 
@@ -272,8 +273,8 @@
     >
         <!-- Assets -->
         <a-assets timeout="30000">
-            <!-- Replace this with your colored image URL or local path -->
-            <img id="colored-image" src="./images/colored.png" crossorigin="anonymous">
+            <!-- Your colored image from GitHub -->
+            <img id="colored-image" src="https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png" crossorigin="anonymous">
         </a-assets>
         
         <!-- Camera -->
