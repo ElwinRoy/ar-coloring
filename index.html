@@ -7,22 +7,18 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * { margin: 0; padding: 0; }
         body { 
             overflow: hidden; 
             background: #000;
-            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-            width: 100%;
-            height: 100vh;
+            font-family: Arial, sans-serif;
         }
         
-        /* Start Screen */
         #start-screen {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -30,170 +26,79 @@
             z-index: 10000;
             color: white;
             text-align: center;
-            padding: 20px;
         }
         
-        #start-screen.hidden { display: none !important; }
+        #start-screen.hidden { display: none; }
         
-        #start-screen h1 { 
-            font-size: 28px; 
-            margin-bottom: 15px; 
-        }
-        
-        #start-screen p { 
-            font-size: 14px; 
-            opacity: 0.8; 
-            margin-bottom: 30px;
-            line-height: 1.6;
-        }
+        #start-screen h1 { font-size: 26px; margin-bottom: 15px; }
+        #start-screen p { font-size: 14px; opacity: 0.7; margin-bottom: 30px; }
         
         #start-btn {
-            padding: 20px 60px;
-            font-size: 20px;
+            padding: 18px 50px;
+            font-size: 18px;
             font-weight: bold;
-            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
             color: white;
             border: none;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4);
         }
         
-        #start-btn:active {
-            transform: scale(0.95);
-        }
-        
-        /* Status Bar */
-        #status-bar {
+        #status {
             position: fixed;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0,0,0,0.8);
             color: white;
-            padding: 16px 32px;
+            padding: 15px 30px;
             border-radius: 30px;
-            font-size: 15px;
-            font-weight: 500;
-            z-index: 9999;
-            text-align: center;
-            min-width: 250px;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: background 0.3s, transform 0.3s;
-        }
-        
-        #status-bar.detected {
-            background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
-            box-shadow: 0 5px 20px rgba(0, 200, 83, 0.4);
-        }
-        
-        /* Timer Display */
-        #timer {
-            position: fixed;
-            top: 30px;
-            right: 20px;
-            background: rgba(0,0,0,0.7);
-            color: #00d4ff;
-            padding: 10px 20px;
-            border-radius: 20px;
             font-size: 14px;
-            font-weight: bold;
             z-index: 9999;
-            display: none;
         }
         
-        #timer.visible { display: block; }
+        #status.found { background: #00c853; }
         
-        /* Hide A-Frame UI */
-        .a-enter-vr-button, 
-        .a-enter-ar-button,
-        .a-loader-title,
-        a-scene .a-enter-vr {
-            display: none !important;
-        }
+        .a-enter-vr-button { display: none !important; }
     </style>
 </head>
 <body>
-    <!-- Start Screen -->
     <div id="start-screen">
         <h1>🎨 AR Coloring Book</h1>
-        <p>Point your camera at the black & white image<br>to see it magically colored!</p>
+        <p>Point camera at the black & white image</p>
         <button id="start-btn">📷 Start Camera</button>
     </div>
     
-    <!-- Timer -->
-    <div id="timer">⏱️ 10s</div>
-    
-    <!-- Status Bar -->
-    <div id="status-bar">📷 Point camera at the image</div>
+    <div id="status">📷 Point at the image</div>
 
     <script>
-        // ========================================
-        // CONFIGURATION
-        // ========================================
-        const CONFIG = {
-            VISIBILITY_DURATION: 10000,  // 10 seconds in milliseconds
-            TARGET_IMAGE: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind',
-            COLORED_IMAGE: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png'
-        };
-        
-        // ========================================
-        // STATE
-        // ========================================
-        let isDetected = false;
-        let detectionTime = 0;
-        let colorPlane = null;
-        let timerInterval = null;
-        let remainingTime = CONFIG.VISIBILITY_DURATION;
-        
-        // ========================================
-        // DOM ELEMENTS
-        // ========================================
         const startScreen = document.getElementById('start-screen');
         const startBtn = document.getElementById('start-btn');
-        const statusBar = document.getElementById('status-bar');
-        const timerDisplay = document.getElementById('timer');
+        const status = document.getElementById('status');
         
-        // ========================================
-        // START BUTTON CLICK
-        // ========================================
+        let colorPlane = null;
+        
+        // START BUTTON
         startBtn.addEventListener('click', async () => {
-            startBtn.textContent = '⏳ Starting...';
-            startBtn.disabled = true;
+            startBtn.textContent = 'Starting...';
             
             try {
-                // Request camera permission
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-                stream.getTracks().forEach(track => track.stop());
-                
-                // Initialize AR
-                initializeAR();
-                
-            } catch (error) {
-                console.error('Camera error:', error);
-                startBtn.textContent = '❌ Camera Denied';
-                alert('Please allow camera access and refresh the page.');
+                await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                createAR();
+            } catch (e) {
+                alert('Camera access denied. Please allow and refresh.');
             }
         });
         
-        // ========================================
-        // INITIALIZE AR SCENE
-        // ========================================
-        function initializeAR() {
-            // Create A-Frame scene
+        // CREATE AR SCENE
+        function createAR() {
             const scene = document.createElement('a-scene');
             
-            // MindAR settings for STABLE detection
             scene.setAttribute('mindar-image', {
-                imageTargetSrc: CONFIG.TARGET_IMAGE,
-                maxTrack: 1,
-                filterMinCF: 0.00001,
-                filterBeta: 0.0001,
-                missTolerance: 1000,      // Very high - won't lose track
+                imageTargetSrc: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind',
+                filterMinCF: 0.0001,
+                filterBeta: 0.001,
+                missTolerance: 500,
                 warmupTolerance: 5,
                 uiLoading: 'no',
                 uiScanning: 'no',
@@ -202,183 +107,63 @@
             
             scene.setAttribute('vr-mode-ui', 'enabled: false');
             scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
-            scene.setAttribute('renderer', 'colorManagement: true; antialias: true; alpha: true;');
+            scene.setAttribute('renderer', 'colorManagement: true; antialias: true;');
             scene.setAttribute('embedded', '');
             
-            // Create assets
+            // Assets
             const assets = document.createElement('a-assets');
-            assets.setAttribute('timeout', '30000');
-            
-            const coloredImg = document.createElement('img');
-            coloredImg.id = 'colored-img';
-            coloredImg.src = CONFIG.COLORED_IMAGE;
-            coloredImg.crossOrigin = 'anonymous';
-            assets.appendChild(coloredImg);
+            const img = document.createElement('img');
+            img.id = 'colored';
+            img.src = 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png';
+            img.crossOrigin = 'anonymous';
+            assets.appendChild(img);
             scene.appendChild(assets);
             
-            // Create camera
+            // Camera
             const camera = document.createElement('a-camera');
             camera.setAttribute('position', '0 0 0');
             camera.setAttribute('look-controls', 'enabled: false');
             scene.appendChild(camera);
             
-            // Create target entity
-            const targetEntity = document.createElement('a-entity');
-            targetEntity.setAttribute('mindar-image-target', 'targetIndex: 0');
-            targetEntity.id = 'target';
+            // Target
+            const target = document.createElement('a-entity');
+            target.setAttribute('mindar-image-target', 'targetIndex: 0');
             
-            // Create colored overlay plane
+            // Colored Plane
             const plane = document.createElement('a-plane');
-            plane.id = 'color-plane';
-            plane.setAttribute('src', '#colored-img');
+            plane.setAttribute('src', '#colored');
             plane.setAttribute('position', '0 0 0');
             plane.setAttribute('width', '1');
             plane.setAttribute('height', '1');
-            plane.setAttribute('material', {
-                shader: 'flat',
-                side: 'double',
-                transparent: true,
-                opacity: 1
-            });
-            plane.setAttribute('visible', 'false');
+            plane.setAttribute('material', 'shader: flat; side: double; transparent: true;');
             
-            targetEntity.appendChild(plane);
-            scene.appendChild(targetEntity);
-            
-            // Add scene to body
+            target.appendChild(plane);
+            scene.appendChild(target);
             document.body.appendChild(scene);
             
-            // Store reference to plane
             colorPlane = plane;
             
-            // Set correct aspect ratio when image loads
-            coloredImg.onload = function() {
-                const aspectRatio = coloredImg.naturalHeight / coloredImg.naturalWidth;
-                plane.setAttribute('height', aspectRatio.toFixed(4));
-                console.log('✅ Image loaded. Aspect ratio:', aspectRatio.toFixed(4));
+            // Set aspect ratio
+            img.onload = () => {
+                const ratio = img.naturalHeight / img.naturalWidth;
+                plane.setAttribute('height', ratio);
             };
             
-            // Setup events when scene loads
+            // Events
             scene.addEventListener('loaded', () => {
-                console.log('✅ AR Scene loaded');
                 startScreen.classList.add('hidden');
-                setupTargetEvents(targetEntity);
-            });
-            
-            // Handle AR errors
-            scene.addEventListener('arError', () => {
-                alert('AR failed to start. Please refresh and try again.');
-            });
-        }
-        
-        // ========================================
-        // SETUP TARGET DETECTION EVENTS
-        // ========================================
-        function setupTargetEvents(targetEntity) {
-            
-            // TARGET FOUND
-            targetEntity.addEventListener('targetFound', () => {
-                console.log('🎯 TARGET FOUND!');
                 
-                isDetected = true;
-                detectionTime = Date.now();
-                remainingTime = CONFIG.VISIBILITY_DURATION;
+                target.addEventListener('targetFound', () => {
+                    status.textContent = '✨ Colors Applied!';
+                    status.classList.add('found');
+                });
                 
-                // Show colored overlay
-                colorPlane.setAttribute('visible', 'true');
-                
-                // Update status
-                statusBar.textContent = '✨ Colors Applied!';
-                statusBar.classList.add('detected');
-                
-                // Start countdown timer
-                startTimer();
-            });
-            
-            // TARGET UPDATED (called continuously while tracking)
-            targetEntity.addEventListener('targetUpdated', () => {
-                // Reset timer every time target is seen
-                detectionTime = Date.now();
-                remainingTime = CONFIG.VISIBILITY_DURATION;
-            });
-            
-            // TARGET LOST
-            targetEntity.addEventListener('targetLost', () => {
-                console.log('⚠️ Target lost - overlay will stay for 10 seconds');
-                // DO NOT hide - let the timer handle it
+                target.addEventListener('targetLost', () => {
+                    status.textContent = '📷 Point at the image';
+                    status.classList.remove('found');
+                });
             });
         }
-        
-        // ========================================
-        // TIMER SYSTEM - 10 SECOND COUNTDOWN
-        // ========================================
-        function startTimer() {
-            // Clear existing timer
-            if (timerInterval) {
-                clearInterval(timerInterval);
-            }
-            
-            // Show timer
-            timerDisplay.classList.add('visible');
-            updateTimerDisplay();
-            
-            // Update every 100ms for smooth countdown
-            timerInterval = setInterval(() => {
-                const elapsed = Date.now() - detectionTime;
-                remainingTime = Math.max(0, CONFIG.VISIBILITY_DURATION - elapsed);
-                
-                updateTimerDisplay();
-                
-                // Time's up - hide overlay
-                if (remainingTime <= 0) {
-                    hideOverlay();
-                }
-            }, 100);
-        }
-        
-        function updateTimerDisplay() {
-            const seconds = Math.ceil(remainingTime / 1000);
-            timerDisplay.textContent = `⏱️ ${seconds}s`;
-            
-            // Change color based on time remaining
-            if (seconds <= 3) {
-                timerDisplay.style.color = '#ff4444';
-            } else if (seconds <= 5) {
-                timerDisplay.style.color = '#ffaa00';
-            } else {
-                timerDisplay.style.color = '#00d4ff';
-            }
-        }
-        
-        function hideOverlay() {
-            console.log('⏱️ Timer ended - hiding overlay');
-            
-            // Clear timer
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-            
-            // Hide elements
-            colorPlane.setAttribute('visible', 'false');
-            timerDisplay.classList.remove('visible');
-            
-            // Reset status
-            statusBar.textContent = '📷 Point camera at the image';
-            statusBar.classList.remove('detected');
-            
-            isDetected = false;
-        }
-        
-        // ========================================
-        // VISIBILITY CHANGE HANDLER
-        // ========================================
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && timerInterval) {
-                // Pause timer when app goes background
-                clearInterval(timerInterval);
-            }
-        });
     </script>
 </body>
 </html>
