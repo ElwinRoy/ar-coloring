@@ -3,147 +3,55 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Coloring Book</title>
+    <title>AR Coloring</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box;
-        }
-        
         html, body {
+            margin: 0;
+            padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: #000;
-            font-family: Arial, sans-serif;
         }
-        
-        /* START SCREEN */
-        #start-screen {
-            position: fixed;
-            top: 0; 
-            left: 0;
-            width: 100%; 
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            color: white;
-            text-align: center;
-        }
-        
-        #start-screen.hidden { 
-            display: none !important; 
-        }
-        
-        #start-screen h1 { 
-            font-size: 26px; 
-            margin-bottom: 15px; 
-        }
-        
-        #start-screen p { 
-            font-size: 14px; 
-            opacity: 0.7; 
-            margin-bottom: 30px; 
-        }
-        
-        #start-btn {
-            padding: 18px 50px;
-            font-size: 18px;
-            font-weight: bold;
-            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-        }
-        
-        /* STATUS BAR */
         #status {
             position: fixed;
-            bottom: 30px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
+            padding: 15px 25px;
+            background: rgba(0,0,0,0.7);
             color: white;
-            padding: 15px 30px;
-            border-radius: 30px;
+            border-radius: 25px;
+            font-family: Arial;
             font-size: 14px;
-            z-index: 9999;
+            z-index: 999;
         }
-        
-        #status.found { 
-            background: #00c853; 
-        }
-        
-        /* FULLSCREEN CAMERA FIX */
-        .a-scene {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-        }
-        
-        .a-canvas {
-            width: 100% !important;
-            height: 100% !important;
-        }
-        
-        /* Hide A-Frame buttons */
-        .a-enter-vr-button,
-        .a-enter-ar-button,
-        .a-loader-title {
-            display: none !important;
+        #status.found {
+            background: #00c853;
         }
     </style>
 </head>
 <body>
-    <!-- START SCREEN -->
-    <div id="start-screen">
-        <h1>🎨 AR Coloring Book</h1>
-        <p>Point camera at the black & white image</p>
-        <button id="start-btn">📷 Start Camera</button>
-    </div>
+    <div id="status">📷 Point camera at the image</div>
     
-    <!-- STATUS -->
-    <div id="status">📷 Point at the image</div>
-    
-    <!-- AR SCENE -->
     <a-scene
-        id="ar-scene"
-        mindar-image="imageTargetSrc: https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind;
-                      filterMinCF: 0.0001;
-                      filterBeta: 0.001;
-                      missTolerance: 500;
-                      warmupTolerance: 5;
-                      uiLoading: no;
-                      uiScanning: no;
-                      uiError: no;"
+        mindar-image="imageTargetSrc: https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind; autoStart: true; uiScanning: yes; uiLoading: yes;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
         renderer="colorManagement: true; antialias: true;"
-        embedded
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;"
     >
         <a-assets>
-            <img id="colored" src="https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png" crossorigin="anonymous">
+            <img id="card" src="https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png" crossorigin="anonymous">
         </a-assets>
-        
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        
-        <a-entity id="target" mindar-image-target="targetIndex: 0">
-            <a-plane
-                id="color-plane"
-                src="#colored"
-                position="0 0 0"
-                width="1"
+
+        <a-entity mindar-image-target="targetIndex: 0">
+            <a-plane 
+                src="#card" 
+                position="0 0 0" 
+                width="1" 
                 height="1"
                 material="shader: flat; side: double; transparent: true;"
             ></a-plane>
@@ -151,55 +59,24 @@
     </a-scene>
 
     <script>
-        const startScreen = document.getElementById('start-screen');
-        const startBtn = document.getElementById('start-btn');
+        // Set correct height based on image aspect ratio
+        document.querySelector('#card').addEventListener('load', function() {
+            const img = this;
+            const ratio = img.naturalHeight / img.naturalWidth;
+            document.querySelector('a-plane').setAttribute('height', ratio);
+        });
+
+        // Status updates
         const status = document.getElementById('status');
-        const scene = document.getElementById('ar-scene');
-        const target = document.getElementById('target');
-        const colorPlane = document.getElementById('color-plane');
-        const coloredImg = document.querySelector('#colored');
+        const target = document.querySelector('[mindar-image-target]');
         
-        // Set correct aspect ratio when image loads
-        coloredImg.addEventListener('load', () => {
-            const ratio = coloredImg.naturalHeight / coloredImg.naturalWidth;
-            colorPlane.setAttribute('height', ratio);
-            console.log('Image aspect ratio:', ratio);
-        });
-        
-        // START BUTTON
-        startBtn.addEventListener('click', async () => {
-            startBtn.textContent = 'Starting...';
-            
-            try {
-                // Request camera
-                await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-                
-                // Start MindAR
-                const arSystem = scene.systems['mindar-image-system'];
-                await arSystem.start();
-                
-                // Hide start screen
-                startScreen.classList.add('hidden');
-                
-            } catch (e) {
-                console.error(e);
-                alert('Camera access denied. Please allow and refresh.');
-            }
-        });
-        
-        // TARGET FOUND
-        target.addEventListener('targetFound', () => {
-            console.log('TARGET FOUND');
+        target.addEventListener('targetFound', function() {
             status.textContent = '✨ Colors Applied!';
             status.classList.add('found');
         });
         
-        // TARGET LOST
-        target.addEventListener('targetLost', () => {
-            console.log('TARGET LOST');
-            status.textContent = '📷 Point at the image';
+        target.addEventListener('targetLost', function() {
+            status.textContent = '📷 Point camera at the image';
             status.classList.remove('found');
         });
     </script>
