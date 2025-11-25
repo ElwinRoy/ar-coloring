@@ -99,41 +99,19 @@
     <div id="status-bar">📷 Point camera at the image</div>
 
     <script>
-        // Register custom component to control visibility
-        AFRAME.registerComponent('hide-on-lost', {
-            init: function() {
-                const el = this.el;
-                const plane = el.querySelector('a-plane');
-                
-                // Hide plane initially
-                if (plane) {
-                    plane.object3D.visible = false;
-                }
-                
-                // Show on target found
-                el.addEventListener('targetFound', function() {
-                    if (plane) {
-                        plane.object3D.visible = true;
-                    }
-                });
-                
-                // Hide on target lost
-                el.addEventListener('targetLost', function() {
-                    if (plane) {
-                        plane.object3D.visible = false;
-                    }
-                });
-            }
-        });
-
         const CONFIG = {
             TARGET_IMAGE: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/targets.mind',
-            COLORED_IMAGE: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png'
+            COLORED_IMAGE: 'https://raw.githubusercontent.com/ElwinRoy/ar-coloring/main/Color%20Draw%20.png',
+            HIDE_DELAY: 1500  // Wait 1.5 seconds before hiding (prevents blinking)
         };
         
         const startScreen = document.getElementById('start-screen');
         const startBtn = document.getElementById('start-btn');
         const statusBar = document.getElementById('status-bar');
+        
+        let plane = null;
+        let isCurrentlyVisible = false;
+        let hideTimeout = null;
         
         // START BUTTON
         startBtn.addEventListener('click', async () => {
@@ -153,6 +131,38 @@
             }
         });
         
+        // SHOW COLORED IMAGE
+        function showColoredImage() {
+            // Cancel any pending hide
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
+            
+            if (!isCurrentlyVisible && plane) {
+                plane.object3D.visible = true;
+                isCurrentlyVisible = true;
+                statusBar.textContent = '✨ Colors Applied!';
+                statusBar.classList.add('detected');
+            }
+        }
+        
+        // HIDE COLORED IMAGE (with delay to prevent blinking)
+        function hideColoredImage() {
+            // Only set timeout if not already pending
+            if (!hideTimeout) {
+                hideTimeout = setTimeout(() => {
+                    if (plane) {
+                        plane.object3D.visible = false;
+                        isCurrentlyVisible = false;
+                        statusBar.textContent = '📷 Point camera at the image';
+                        statusBar.classList.remove('detected');
+                    }
+                    hideTimeout = null;
+                }, CONFIG.HIDE_DELAY);
+            }
+        }
+        
         // INITIALIZE AR
         function initializeAR() {
             const scene = document.createElement('a-scene');
@@ -160,10 +170,10 @@
             scene.setAttribute('mindar-image', {
                 imageTargetSrc: CONFIG.TARGET_IMAGE,
                 maxTrack: 1,
-                filterMinCF: 0.0001,
-                filterBeta: 0.001,
-                missTolerance: 0,
-                warmupTolerance: 0,
+                filterMinCF: 0.001,
+                filterBeta: 0.1,
+                missTolerance: 5,
+                warmupTolerance: 3,
                 uiLoading: 'no',
                 uiScanning: 'no',
                 uiError: 'no'
@@ -191,51 +201,53 @@
             camera.setAttribute('look-controls', 'enabled: false');
             scene.appendChild(camera);
             
-            // Target entity with custom component
+            // Target entity
             const targetEntity = document.createElement('a-entity');
             targetEntity.setAttribute('mindar-image-target', 'targetIndex: 0');
-            targetEntity.setAttribute('hide-on-lost', '');
             targetEntity.id = 'target';
             
-            // Colored plane
-            const plane = document.createElement('a-plane');
-            plane.id = 'color-plane';
-            plane.setAttribute('src', '#colored-img');
-            plane.setAttribute('position', '0 0 0');
-            plane.setAttribute('width', '1');
-            plane.setAttribute('height', '1');
-            plane.setAttribute('material', {
+            // Colored plane - HIDDEN BY DEFAULT
+            const planeEl = document.createElement('a-plane');
+            planeEl.id = 'color-plane';
+            planeEl.setAttribute('src', '#colored-img');
+            planeEl.setAttribute('position', '0 0 0');
+            planeEl.setAttribute('width', '1');
+            planeEl.setAttribute('height', '1');
+            planeEl.setAttribute('material', {
                 shader: 'flat',
                 side: 'double',
                 transparent: true,
                 opacity: 1
             });
             
-            targetEntity.appendChild(plane);
+            targetEntity.appendChild(planeEl);
             scene.appendChild(targetEntity);
             document.body.appendChild(scene);
             
-            // Set aspect ratio
+            // Set aspect ratio when image loads
             coloredImg.onload = function() {
                 const aspectRatio = coloredImg.naturalHeight / coloredImg.naturalWidth;
-                plane.setAttribute('height', aspectRatio.toFixed(4));
+                planeEl.setAttribute('height', aspectRatio.toFixed(4));
             };
             
             // Scene loaded
             scene.addEventListener('loaded', () => {
                 startScreen.classList.add('hidden');
                 
-                // Status updates
+                // Store plane reference and hide initially
+                plane = planeEl;
+                plane.object3D.visible = false;
+                
+                // TARGET FOUND
                 targetEntity.addEventListener('targetFound', () => {
-                    console.log('🎯 TARGET FOUND!');
-                    statusBar.textContent = '✨ Colors Applied!';
-                    statusBar.classList.add('detected');
+                    console.log('🎯 TARGET FOUND');
+                    showColoredImage();
                 });
                 
+                // TARGET LOST
                 targetEntity.addEventListener('targetLost', () => {
-                    console.log('❌ Target lost');
-                    statusBar.textContent = '📷 Point camera at the image';
-                    statusBar.classList.remove('detected');
+                    console.log('⚠️ TARGET LOST');
+                    hideColoredImage();
                 });
             });
             
